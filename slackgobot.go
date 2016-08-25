@@ -24,7 +24,7 @@ func main() {
 	// start a websocket-based Real Time API session
 	websocket, id, err := connectToSlack(token)
 	if err != nil {
-		log.Fatal("Can't connect to Slack %s", err)
+		log.Fatalf("Can't connect to Slack [%s]", err)
 	}
 	fmt.Println("SlackGoBot is running...")
 	fmt.Println("SlackGoBot id is =", id)
