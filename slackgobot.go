@@ -21,18 +21,19 @@ func main() {
 
 	token := viper.GetString("connection.token")
 
+	var sc slackConnection
 	// start a websocket-based Real Time API session
-	websocket, id, err := connectToSlack(token)
+	err = sc.connect(token)
 	if err != nil {
 		log.Fatalf("Can't connect to Slack [%s]", err)
 	}
 	fmt.Println("SlackGoBot is running...")
-	fmt.Println("SlackGoBot id is =", id)
+	fmt.Println("SlackGoBot id is =", sc.botID)
 
 	for {
 
 		// Read each incoming message
-		msg, err := receiveSlackMessage(websocket)
+		msg, err := sc.receiveMessage()
 		if err != nil {
 			log.Fatal("Error while getting message", err)
 		}
@@ -42,7 +43,7 @@ func main() {
 		}
 
 		// Test if the message was written by the bot
-		if msg.User == id {
+		if msg.User == sc.botID {
 			continue
 		}
 
@@ -53,7 +54,7 @@ func main() {
 			// NOTE: the Message object is copied, this is intentional
 			go func(msg Message) {
 				msg.Text = helpUser(msg.Text)
-				sendSlackMessage(websocket, msg)
+				sc.sendMessage(msg)
 			}(msg)
 		}
 	}

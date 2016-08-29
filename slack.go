@@ -11,6 +11,11 @@ import (
 	"golang.org/x/net/websocket"
 )
 
+type slackConnection struct {
+	ws    *websocket.Conn
+	botID string
+}
+
 type responseRtmStart struct {
 	Ok    bool         `json:"ok"`
 	URL   string       `json:"url"`
@@ -60,20 +65,22 @@ func startSlack(token string) (string, string, error) {
 
 // Starts a websocket-based Real Time API session and return the websocket
 // and the ID of the (bot-)user whom the token belongs to.
-func connectToSlack(token string) (*websocket.Conn, string, error) {
-	websocketURL, id, err := startSlack(token)
+func (sc *slackConnection) connect(token string) error {
+	websocketURL, botID, err := startSlack(token)
 	if err != nil {
 		log.Printf("Error with startSlack")
-		return nil, "", err
+		return err
 	}
 
-	ws, err := websocket.Dial(websocketURL, "", "https://api.slack.com/")
+	sc.ws, err = websocket.Dial(websocketURL, "", "https://api.slack.com/")
 	if err != nil {
 		log.Printf("error with websocket.Dial")
-		return nil, "", err
+		return err
 	}
 
-	return ws, id, nil
+	sc.botID = botID
+
+	return nil
 }
 
 // These are the messages read off and written into the websocket. Since this
@@ -89,17 +96,17 @@ type Message struct {
 	Text    string `json:"text"`
 }
 
-func receiveSlackMessage(ws *websocket.Conn) (Message, error) {
+func (sc *slackConnection) receiveMessage() (Message, error) {
 	var msg Message
-	err := websocket.JSON.Receive(ws, &msg)
+	err := websocket.JSON.Receive(sc.ws, &msg)
 	return msg, err
 }
 
 var counter uint64
 
 // sendSlackMessage sends a message to Slack by sending JSON over the websocket connection.
-func sendSlackMessage(ws *websocket.Conn, msg Message) error {
+func (sc *slackConnection) sendMessage(msg Message) error {
 	msg.ID = atomic.AddUint64(&counter, 1)
-	err := websocket.JSON.Send(ws, msg)
+	err := websocket.JSON.Send(sc.ws, msg)
 	return err
 }
